@@ -29,12 +29,12 @@ jobs:
       - name: Restore vcpkg cache
         uses: actions/cache@v4
         with:
-          path: C:\\vcpkg\\installed
+          path: C:\vcpkg\installed
           key: vcpkg-windows-${{ hashFiles('Cargo.toml') }}
 
       - name: Install vcpkg dependencies
         run: |
-          vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
+          vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static --classic
         env:
           VCPKG_DEFAULT_TRIPLET: x64-windows-static
 
@@ -60,13 +60,13 @@ jobs:
       - name: Build release
         run: cargo build --release
         env:
-          VCPKG_ROOT: C:\\vcpkg
-          LIBCLANG_PATH: ${{ env.LLVM_PATH }}\\bin
+          VCPKG_ROOT: C:\vcpkg
+          LIBCLANG_PATH: ${{ env.LLVM_PATH }}\bin
           FLUTTER_ROOT: ${{ env.FLUTTER_ROOT }}
 
       - name: Upload exe
         uses: actions/upload-artifact@v4
         with:
           name: rustdesk-windows-controlled-only
-          path: target\\release\\rustdesk.exe
+          path: target\release\rustdesk.exe
           retention-days: 14
