@@ -1,0 +1,72 @@
+name: Build Windows Controlled-Only
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        with:
+          version: "15"
+
+      - name: Restore vcpkg cache
+        uses: actions/cache@v4
+        with:
+          path: C:\\vcpkg\\installed
+          key: vcpkg-windows-${{ hashFiles('Cargo.toml') }}
+
+      - name: Install vcpkg dependencies
+        run: |
+          vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
+        env:
+          VCPKG_DEFAULT_TRIPLET: x64-windows-static
+
+      - name: Flutter pub get
+        working-directory: flutter
+        run: flutter pub get
+
+      - name: Patch UI - Hide controller
+        shell: python
+        run: |
+          import pathlib
+          target = pathlib.Path("flutter/lib/desktop/pages/desktop_home_page.dart")
+          if not target.exists():
+              print("File not found, skipping")
+              exit(0)
+          content = target.read_text(encoding="utf-8")
+          for old, new in [("RemoteTab()", "Container()"), ("ConnectionPage()", "Container()"), ("_buildRemoteTab()", "Container()")]:
+              if old in content:
+                  content = content.replace(old, new)
+                  print(f"Patched: {old}")
+          target.write_text(content, encoding="utf-8")
+
+      - name: Build release
+        run: cargo build --release
+        env:
+          VCPKG_ROOT: C:\\vcpkg
+          LIBCLANG_PATH: ${{ env.LLVM_PATH }}\\bin
+          FLUTTER_ROOT: ${{ env.FLUTTER_ROOT }}
+
+      - name: Upload exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustdesk-windows-controlled-only
+          path: target\\release\\rustdesk.exe
+          retention-days: 14
